@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { AuthUser } from '../types'
-import { AUTH_STORAGE_KEY, MOCK_USERS } from '../constants'
+import type { AuthUser, LoginResponse, ApiError } from '../types'
+import { AUTH_STORAGE_KEY } from '../constants'
+import { api } from '../services/api'
 
 function getStoredSession(): AuthUser | null {
   const raw = localStorage.getItem(AUTH_STORAGE_KEY)
@@ -14,28 +15,53 @@ function getStoredSession(): AuthUser | null {
   }
 }
 
+function deriveNameFromEmail(email: string): string {
+  const localPart = email.split('@')[0]
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1)
+}
+
 export function useAuth() {
   const [session, setSession] = useState<AuthUser | null>(getStoredSession)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const login = (email: string, password: string): boolean => {
-    const user = MOCK_USERS.find(
-      (u) =>
-        u.email.toLowerCase() === email.trim().toLowerCase() &&
-        u.password === password,
-    )
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true)
+    setError(null)
 
-    if (!user) return false
+    try {
+      const response = await api.post<LoginResponse>(
+        '/auth/login',
+        { email, password },
+        false,
+      )
 
-    const { password: _, ...authUser } = user
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser))
-    setSession(authUser)
-    return true
+      const authUser: AuthUser = {
+        email,
+        name: deriveNameFromEmail(email),
+        role: response.role,
+        token: response.token,
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser))
+      setSession(authUser)
+      return true
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.message ?? 'Error al iniciar sesion.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const logout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY)
     setSession(null)
+    setError(null)
   }
 
-  return { session, login, logout }
+  const clearError = () => setError(null)
+
+  return { session, login, logout, isLoading, error, clearError }
 }

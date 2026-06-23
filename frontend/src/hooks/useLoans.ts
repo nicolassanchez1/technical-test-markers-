@@ -1,100 +1,98 @@
-import { useState } from 'react'
-import type { Loan, LoanRequest, LoanStatus } from '../types'
-import { LOANS_STORAGE_KEY } from '../constants'
+import { useState, useCallback } from 'react'
+import type { Loan, LoanRequest, LoanStatus, LoanStatusUpdate, ApiError } from '../types'
+import { api } from '../services/api'
 
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
-}
+export function useLoans() {
+  const [loans, setLoans] = useState<Loan[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-function loadLoans(): Loan[] {
-  const raw = localStorage.getItem(LOANS_STORAGE_KEY)
-  if (!raw) return []
+  const fetchUserLoans = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
 
-  try {
-    return JSON.parse(raw) as Loan[]
-  } catch {
-    localStorage.removeItem(LOANS_STORAGE_KEY)
-    return []
-  }
-}
-
-function saveLoans(loans: Loan[]): void {
-  localStorage.setItem(LOANS_STORAGE_KEY, JSON.stringify(loans))
-}
-
-function sortByDate(loans: Loan[]): Loan[] {
-  return [...loans].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  )
-}
-
-export function useLoans(userEmail?: string) {
-  const [loans, setLoans] = useState<Loan[]>(() => {
-    if (userEmail) {
-      return sortByDate(loadLoans().filter((l) => l.userEmail === userEmail))
+    try {
+      const data = await api.get<Loan[]>('/loans')
+      setLoans(data)
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.message ?? 'Error al cargar prestamos.')
+    } finally {
+      setIsLoading(false)
     }
-    return sortByDate(loadLoans())
+  }, [])
+
+  const fetchAllLoans = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const data = await api.get<Loan[]>('/loans/all')
+      setLoans(data)
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.message ?? 'Error al cargar prestamos.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  const createLoan = async (request: LoanRequest): Promise<boolean> => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await api.post<Loan>('/loans', request)
+      await fetchUserLoans()
+      return true
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.message ?? 'Error al solicitar prestamo.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const updateLoanStatus = async (
+    loanId: number,
+    status: LoanStatus,
+  ): Promise<boolean> => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const body: LoanStatusUpdate = { status: status as 'APPROVED' | 'REJECTED' }
+      await api.patch<Loan>(`/loans/${loanId}/status`, body)
+      await fetchAllLoans()
+      return true
+    } catch (err) {
+      const apiError = err as ApiError
+      setError(apiError.message ?? 'Error al actualizar prestamo.')
+      return false
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const clearError = () => setError(null)
+
+  const getStats = () => ({
+    total: loans.length,
+    pending: loans.filter((l) => l.status === 'PENDING').length,
+    approved: loans.filter((l) => l.status === 'APPROVED').length,
+    rejected: loans.filter((l) => l.status === 'REJECTED').length,
   })
 
-  const refreshLoans = (filter?: LoanStatus | 'ALL') => {
-    const allLoans = loadLoans()
-
-    if (userEmail) {
-      setLoans(sortByDate(allLoans.filter((l) => l.userEmail === userEmail)))
-      return
-    }
-
-    if (!filter || filter === 'ALL') {
-      setLoans(sortByDate(allLoans))
-    } else {
-      setLoans(sortByDate(allLoans.filter((l) => l.status === filter)))
-    }
+  return {
+    loans,
+    isLoading,
+    error,
+    fetchUserLoans,
+    fetchAllLoans,
+    createLoan,
+    updateLoanStatus,
+    clearError,
+    getStats,
   }
-
-  const createLoan = (request: LoanRequest): Loan => {
-    const allLoans = loadLoans()
-    const now = new Date().toISOString()
-
-    const newLoan: Loan = {
-      id: generateId(),
-      userEmail: userEmail!,
-      amount: request.amount,
-      term: request.term,
-      status: 'PENDING',
-      createdAt: now,
-      updatedAt: now,
-    }
-
-    allLoans.push(newLoan)
-    saveLoans(allLoans)
-    refreshLoans()
-    return newLoan
-  }
-
-  const updateLoanStatus = (loanId: string, status: LoanStatus): void => {
-    const allLoans = loadLoans()
-    const index = allLoans.findIndex((l) => l.id === loanId)
-
-    if (index === -1) return
-
-    allLoans[index] = {
-      ...allLoans[index],
-      status,
-      updatedAt: new Date().toISOString(),
-    }
-
-    saveLoans(allLoans)
-  }
-
-  const getStats = () => {
-    const allLoans = loadLoans()
-    return {
-      total: allLoans.length,
-      pending: allLoans.filter((l) => l.status === 'PENDING').length,
-      approved: allLoans.filter((l) => l.status === 'APPROVED').length,
-      rejected: allLoans.filter((l) => l.status === 'REJECTED').length,
-    }
-  }
-
-  return { loans, createLoan, updateLoanStatus, refreshLoans, getStats }
 }
