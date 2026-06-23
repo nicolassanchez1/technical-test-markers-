@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { LoginForm } from '../types'
+import { APP_NAME, MOCK_USERS, TEXTS } from '../constants'
+import { validateLoginForm, hasErrors } from '../utils/validation'
 
 type Props = {
   onLogin: (email: string, password: string) => boolean
@@ -8,39 +10,24 @@ type Props = {
 
 type LoginErrors = Partial<Record<keyof LoginForm | 'credentials', string>>
 
+const INITIAL_FORM: LoginForm = { email: '', password: '' }
+
 export function Login({ onLogin }: Props) {
-  const [form, setForm] = useState<LoginForm>({ email: '', password: '' })
+  const [form, setForm] = useState<LoginForm>(INITIAL_FORM)
   const [errors, setErrors] = useState<LoginErrors>({})
-
-  const validate = (): LoginErrors => {
-    const errs: LoginErrors = {}
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-    if (!form.email.trim()) {
-      errs.email = 'El correo es obligatorio.'
-    } else if (!emailPattern.test(form.email)) {
-      errs.email = 'Ingresa un correo valido.'
-    }
-
-    if (!form.password) {
-      errs.password = 'La contrasena es obligatoria.'
-    }
-
-    return errs
-  }
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    const validationErrors = validate()
+    const validationErrors = validateLoginForm(form)
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (hasErrors(validationErrors)) {
       setErrors(validationErrors)
       return
     }
 
     const success = onLogin(form.email, form.password)
     if (!success) {
-      setErrors({ credentials: 'Correo o contrasena incorrectos.' })
+      setErrors({ credentials: TEXTS.validation.credentialsInvalid })
     }
   }
 
@@ -48,22 +35,22 @@ export function Login({ onLogin }: Props) {
     setErrors((prev) => ({ ...prev, [field]: undefined, credentials: undefined }))
   }
 
+  const demoUser = MOCK_USERS[0]
+  const demoAdmin = MOCK_USERS[1]
+
   return (
     <main className="login-page">
       <section className="login-hero">
         <div className="login-hero-content">
-          <span className="eyebrow">Makers Bank</span>
-          <h1>Gestion de prestamos bancarios</h1>
-          <p>
-            Sistema integral para la solicitud, seguimiento y aprobacion de
-            prestamos bancarios.
-          </p>
+          <span className="eyebrow">{APP_NAME}</span>
+          <h1>{TEXTS.login.heroTitle}</h1>
+          <p>{TEXTS.login.heroSubtitle}</p>
           <div className="demo-credentials">
             <div className="credential-chip">
-              <strong>Usuario:</strong> usuario@test.com / 123
+              <strong>{TEXTS.login.demoUserLabel}:</strong> {demoUser.email} / {demoUser.password}
             </div>
             <div className="credential-chip">
-              <strong>Admin:</strong> admin@test.com / 123
+              <strong>{TEXTS.login.demoAdminLabel}:</strong> {demoAdmin.email} / {demoAdmin.password}
             </div>
           </div>
         </div>
@@ -72,19 +59,19 @@ export function Login({ onLogin }: Props) {
       <section className="login-form-section">
         <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="login-form-header">
-            <span className="eyebrow">Acceso seguro</span>
-            <h2>Iniciar sesion</h2>
-            <p>Ingresa tus credenciales para acceder al sistema.</p>
+            <span className="eyebrow">{TEXTS.login.eyebrow}</span>
+            <h2>{TEXTS.login.title}</h2>
+            <p>{TEXTS.login.subtitle}</p>
           </div>
 
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{TEXTS.login.emailLabel}</label>
             <input
               id="email"
               type="email"
               value={form.email}
               autoComplete="email"
-              placeholder="usuario@test.com"
+              placeholder={demoUser.email}
               aria-invalid={Boolean(errors.email)}
               onChange={(e) => {
                 setForm((f) => ({ ...f, email: e.target.value }))
@@ -95,13 +82,13 @@ export function Login({ onLogin }: Props) {
           </div>
 
           <div className="field">
-            <label htmlFor="password">Contrasena</label>
+            <label htmlFor="password">{TEXTS.login.passwordLabel}</label>
             <input
               id="password"
               type="password"
               value={form.password}
               autoComplete="current-password"
-              placeholder="123"
+              placeholder={demoUser.password}
               aria-invalid={Boolean(errors.password)}
               onChange={(e) => {
                 setForm((f) => ({ ...f, password: e.target.value }))
@@ -116,7 +103,7 @@ export function Login({ onLogin }: Props) {
           )}
 
           <button className="btn-primary" type="submit">
-            Ingresar
+            {TEXTS.login.submitBtn}
           </button>
         </form>
       </section>

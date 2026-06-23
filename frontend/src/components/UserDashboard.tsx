@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { AuthUser, Loan, LoanRequest } from '../types'
-import { createLoan, getLoansByUser } from '../services/loans'
+import type { AuthUser, LoanRequest } from '../types'
+import { STATUS_LABELS, TEXTS } from '../constants'
+import { useLoans } from '../hooks/useLoans'
+import { validateLoanForm, hasErrors } from '../utils/validation'
+import { formatCurrency, formatDate, formatLoanId } from '../utils/format'
 
 type Props = {
   user: AuthUser
@@ -9,83 +12,46 @@ type Props = {
 
 type FormErrors = Partial<Record<keyof LoanRequest, string>>
 
-const STATUS_LABELS: Record<string, { text: string; className: string }> = {
-  PENDING: { text: 'Pendiente', className: 'status-pending' },
-  APPROVED: { text: 'Aprobado', className: 'status-approved' },
-  REJECTED: { text: 'Rechazado', className: 'status-rejected' },
-}
+const INITIAL_FORM: LoanRequest = { amount: 0, term: 1 }
 
 export function UserDashboard({ user }: Props) {
-  const [loans, setLoans] = useState<Loan[]>(() => getLoansByUser(user.email))
-  const [form, setForm] = useState<LoanRequest>({ amount: 0, term: 1 })
+  const { loans, createLoan } = useLoans(user.email)
+  const [form, setForm] = useState<LoanRequest>(INITIAL_FORM)
   const [errors, setErrors] = useState<FormErrors>({})
   const [showForm, setShowForm] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
-  const validate = (): FormErrors => {
-    const errs: FormErrors = {}
-
-    if (!form.amount || form.amount <= 0) {
-      errs.amount = 'El monto debe ser mayor a 0.'
-    } else if (form.amount > 1000000) {
-      errs.amount = 'El monto maximo es $1,000,000.'
-    }
-
-    if (!form.term || form.term < 1) {
-      errs.term = 'El plazo minimo es 1 mes.'
-    } else if (form.term > 60) {
-      errs.term = 'El plazo maximo es 60 meses.'
-    }
-
-    return errs
-  }
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    const validationErrors = validate()
+    const validationErrors = validateLoanForm(form)
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (hasErrors(validationErrors)) {
       setErrors(validationErrors)
       return
     }
 
-    createLoan(user.email, form)
-    setLoans(getLoansByUser(user.email))
-    setForm({ amount: 0, term: 1 })
+    createLoan(form)
+    setForm(INITIAL_FORM)
     setErrors({})
     setShowForm(false)
-    setSuccessMessage('Solicitud de prestamo enviada correctamente.')
+    setSuccessMessage(TEXTS.userDashboard.successMessage)
     setTimeout(() => setSuccessMessage(''), 4000)
   }
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-    }).format(value)
-
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
+  const toggleForm = () => {
+    setShowForm((prev) => !prev)
+    setErrors({})
+  }
 
   return (
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <h1>Mis prestamos</h1>
-          <p>Solicita y consulta el estado de tus prestamos.</p>
+          <h1>{TEXTS.userDashboard.title}</h1>
+          <p>{TEXTS.userDashboard.subtitle}</p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setShowForm(!showForm)
-            setErrors({})
-          }}
-        >
-          {showForm ? 'Cancelar' : 'Nuevo prestamo'}
+        <button className="btn-primary" onClick={toggleForm}>
+          {showForm ? TEXTS.userDashboard.cancelBtn : TEXTS.userDashboard.newLoanBtn}
         </button>
       </div>
 
@@ -93,11 +59,11 @@ export function UserDashboard({ user }: Props) {
 
       {showForm && (
         <section className="loan-form-card">
-          <h2>Solicitar prestamo</h2>
+          <h2>{TEXTS.userDashboard.formTitle}</h2>
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-grid">
               <div className="field">
-                <label htmlFor="amount">Monto (MXN)</label>
+                <label htmlFor="amount">{TEXTS.userDashboard.amountLabel}</label>
                 <input
                   id="amount"
                   type="number"
@@ -115,7 +81,7 @@ export function UserDashboard({ user }: Props) {
               </div>
 
               <div className="field">
-                <label htmlFor="term">Plazo (meses)</label>
+                <label htmlFor="term">{TEXTS.userDashboard.termLabel}</label>
                 <input
                   id="term"
                   type="number"
@@ -134,7 +100,7 @@ export function UserDashboard({ user }: Props) {
             </div>
 
             <button className="btn-primary" type="submit">
-              Enviar solicitud
+              {TEXTS.userDashboard.submitBtn}
             </button>
           </form>
         </section>
@@ -142,8 +108,8 @@ export function UserDashboard({ user }: Props) {
 
       {loans.length === 0 ? (
         <div className="empty-state">
-          <p>No tienes prestamos registrados.</p>
-          <p>Solicita tu primer prestamo para comenzar.</p>
+          <p>{TEXTS.userDashboard.emptyTitle}</p>
+          <p>{TEXTS.userDashboard.emptySubtitle}</p>
         </div>
       ) : (
         <section className="loans-grid">
@@ -152,7 +118,7 @@ export function UserDashboard({ user }: Props) {
             return (
               <article key={loan.id} className="loan-card">
                 <div className="loan-card-header">
-                  <span className="loan-id">#{loan.id.slice(0, 8)}</span>
+                  <span className="loan-id">{formatLoanId(loan.id)}</span>
                   <span className={`status-badge ${statusInfo.className}`}>
                     {statusInfo.text}
                   </span>
@@ -160,18 +126,18 @@ export function UserDashboard({ user }: Props) {
 
                 <div className="loan-card-body">
                   <div className="loan-detail">
-                    <span className="loan-label">Monto</span>
+                    <span className="loan-label">{TEXTS.common.amountLabel}</span>
                     <span className="loan-value">{formatCurrency(loan.amount)}</span>
                   </div>
                   <div className="loan-detail">
-                    <span className="loan-label">Plazo</span>
-                    <span className="loan-value">{loan.term} meses</span>
+                    <span className="loan-label">{TEXTS.common.termLabel}</span>
+                    <span className="loan-value">{loan.term} {TEXTS.common.monthsUnit}</span>
                   </div>
                 </div>
 
                 <div className="loan-card-footer">
-                  <span>Solicitado: {formatDate(loan.createdAt)}</span>
-                  <span>Actualizado: {formatDate(loan.updatedAt)}</span>
+                  <span>{TEXTS.common.requestedPrefix} {formatDate(loan.createdAt)}</span>
+                  <span>{TEXTS.common.updatedPrefix} {formatDate(loan.updatedAt)}</span>
                 </div>
               </article>
             )

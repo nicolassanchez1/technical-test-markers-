@@ -1,121 +1,83 @@
 import { useState } from 'react'
-import type { AuthUser, Loan, LoanStatus } from '../types'
-import {
-  getAllLoans,
-  getLoanStats,
-  getPendingLoans,
-  updateLoanStatus,
-} from '../services/loans'
+import type { LoanStatus } from '../types'
+import { FILTER_LABELS, FILTER_OPTIONS, STATUS_LABELS, TEXTS } from '../constants'
+import { useLoans } from '../hooks/useLoans'
+import { formatCurrency, formatDateTime, formatLoanId } from '../utils/format'
 
-type Props = {
-  user: AuthUser
-}
+type FilterType = (typeof FILTER_OPTIONS)[number]
 
-type FilterType = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'
-
-const STATUS_LABELS: Record<string, { text: string; className: string }> = {
-  PENDING: { text: 'Pendiente', className: 'status-pending' },
-  APPROVED: { text: 'Aprobado', className: 'status-approved' },
-  REJECTED: { text: 'Rechazado', className: 'status-rejected' },
-}
-
-export function AdminDashboard({ user: _user }: Props) {
+export function AdminDashboard() {
+  const { loans, updateLoanStatus, refreshLoans, getStats } = useLoans()
   const [filter, setFilter] = useState<FilterType>('PENDING')
-  const [loans, setLoans] = useState<Loan[]>(getPendingLoans())
-  const [stats, setStats] = useState(getLoanStats())
+  const [stats, setStats] = useState(getStats())
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  const refreshData = (newFilter: FilterType) => {
+  const handleFilterChange = (newFilter: FilterType) => {
     setFilter(newFilter)
-    switch (newFilter) {
-      case 'ALL':
-        setLoans(getAllLoans())
-        break
-      case 'PENDING':
-        setLoans(getPendingLoans())
-        break
-      default:
-        setLoans(getAllLoans().filter((l) => l.status === newFilter))
-    }
-    setStats(getLoanStats())
+    refreshLoans(newFilter)
+    setStats(getStats())
   }
 
   const handleStatusChange = (loanId: string, newStatus: LoanStatus) => {
     setProcessingId(loanId)
     setTimeout(() => {
       updateLoanStatus(loanId, newStatus)
-      refreshData(filter)
+      refreshLoans(filter)
+      setStats(getStats())
       setProcessingId(null)
     }, 300)
   }
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-    }).format(value)
-
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
 
   return (
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <h1>Panel de administracion</h1>
-          <p>Gestiona las solicitudes de prestamos bancarios.</p>
+          <h1>{TEXTS.adminDashboard.title}</h1>
+          <p>{TEXTS.adminDashboard.subtitle}</p>
         </div>
       </div>
 
       <section className="stats-grid">
         <div className="stat-card">
           <span className="stat-number">{stats.total}</span>
-          <span className="stat-label">Total</span>
+          <span className="stat-label">{TEXTS.adminDashboard.totalLabel}</span>
         </div>
         <div className="stat-card stat-pending">
           <span className="stat-number">{stats.pending}</span>
-          <span className="stat-label">Pendientes</span>
+          <span className="stat-label">{TEXTS.adminDashboard.pendingLabel}</span>
         </div>
         <div className="stat-card stat-approved">
           <span className="stat-number">{stats.approved}</span>
-          <span className="stat-label">Aprobados</span>
+          <span className="stat-label">{TEXTS.adminDashboard.approvedLabel}</span>
         </div>
         <div className="stat-card stat-rejected">
           <span className="stat-number">{stats.rejected}</span>
-          <span className="stat-label">Rechazados</span>
+          <span className="stat-label">{TEXTS.adminDashboard.rejectedLabel}</span>
         </div>
       </section>
 
       <section className="filter-bar">
-        <span className="filter-label">Filtrar:</span>
-        {(['PENDING', 'ALL', 'APPROVED', 'REJECTED'] as FilterType[]).map(
-          (f) => (
-            <button
-              key={f}
-              className={`filter-btn ${filter === f ? 'active' : ''}`}
-              onClick={() => refreshData(f)}
-            >
-              {f === 'ALL'
-                ? 'Todos'
-                : f === 'PENDING'
-                  ? 'Pendientes'
-                  : f === 'APPROVED'
-                    ? 'Aprobados'
-                    : 'Rechazados'}
-            </button>
-          ),
-        )}
+        <span className="filter-label">{TEXTS.adminDashboard.filterLabel}</span>
+        {FILTER_OPTIONS.map((f) => (
+          <button
+            key={f}
+            className={`filter-btn ${filter === f ? 'active' : ''}`}
+            onClick={() => handleFilterChange(f)}
+          >
+            {FILTER_LABELS[f]}
+          </button>
+        ))}
       </section>
 
       {loans.length === 0 ? (
         <div className="empty-state">
-          <p>No hay prestamos {filter !== 'ALL' ? 'con este filtro' : 'registrados'}.</p>
+          <p>
+            {TEXTS.adminDashboard.emptyMessage}{' '}
+            {filter !== 'ALL'
+              ? TEXTS.adminDashboard.emptyWithFilter
+              : TEXTS.adminDashboard.emptyDefault}
+            .
+          </p>
         </div>
       ) : (
         <section className="admin-loans-list">
@@ -127,7 +89,7 @@ export function AdminDashboard({ user: _user }: Props) {
               <article key={loan.id} className="admin-loan-card">
                 <div className="admin-loan-info">
                   <div className="admin-loan-header">
-                    <span className="loan-id">#{loan.id.slice(0, 8)}</span>
+                    <span className="loan-id">{formatLoanId(loan.id)}</span>
                     <span className={`status-badge ${statusInfo.className}`}>
                       {statusInfo.text}
                     </span>
@@ -135,16 +97,16 @@ export function AdminDashboard({ user: _user }: Props) {
 
                   <div className="admin-loan-details">
                     <span>
-                      <strong>Solicitante:</strong> {loan.userEmail}
+                      <strong>{TEXTS.adminDashboard.applicantLabel}:</strong> {loan.userEmail}
                     </span>
                     <span>
-                      <strong>Monto:</strong> {formatCurrency(loan.amount)}
+                      <strong>{TEXTS.adminDashboard.amountLabel}:</strong> {formatCurrency(loan.amount)}
                     </span>
                     <span>
-                      <strong>Plazo:</strong> {loan.term} meses
+                      <strong>{TEXTS.adminDashboard.termLabel}:</strong> {loan.term} {TEXTS.common.monthsUnit}
                     </span>
                     <span>
-                      <strong>Fecha:</strong> {formatDate(loan.createdAt)}
+                      <strong>{TEXTS.adminDashboard.dateLabel}:</strong> {formatDateTime(loan.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -156,14 +118,18 @@ export function AdminDashboard({ user: _user }: Props) {
                       disabled={isProcessing}
                       onClick={() => handleStatusChange(loan.id, 'APPROVED')}
                     >
-                      {isProcessing ? 'Procesando...' : 'Aprobar'}
+                      {isProcessing
+                        ? TEXTS.adminDashboard.processingBtn
+                        : TEXTS.adminDashboard.approveBtn}
                     </button>
                     <button
                       className="btn-reject"
                       disabled={isProcessing}
                       onClick={() => handleStatusChange(loan.id, 'REJECTED')}
                     >
-                      {isProcessing ? 'Procesando...' : 'Rechazar'}
+                      {isProcessing
+                        ? TEXTS.adminDashboard.processingBtn
+                        : TEXTS.adminDashboard.rejectBtn}
                     </button>
                   </div>
                 )}
