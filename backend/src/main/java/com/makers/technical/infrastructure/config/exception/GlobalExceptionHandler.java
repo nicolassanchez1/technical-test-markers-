@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), null);
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(org.springframework.security.authentication.BadCredentialsException ex) {
+        return buildErrorResponse(org.springframework.http.HttpStatus.UNAUTHORIZED, "Incorrect email address or password", null);
+    }
+
     private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message, Object details) {
         Map<String, Object> response = new HashMap<>();
         response.put("timestamp", LocalDateTime.now());
