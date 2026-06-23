@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LoanStatus } from '../types'
 import { FILTER_LABELS, FILTER_OPTIONS, STATUS_LABELS, TEXTS } from '../constants'
 import { useLoans } from '../hooks/useLoans'
@@ -7,25 +7,29 @@ import { formatCurrency, formatDateTime, formatLoanId } from '../utils/format'
 type FilterType = (typeof FILTER_OPTIONS)[number]
 
 export function AdminDashboard() {
-  const { loans, updateLoanStatus, refreshLoans, getStats } = useLoans()
-  const [filter, setFilter] = useState<FilterType>('PENDING')
-  const [stats, setStats] = useState(getStats())
-  const [processingId, setProcessingId] = useState<string | null>(null)
+  const { loans, isLoading, error, fetchAllLoans, updateLoanStatus, getStats, clearError } =
+    useLoans()
+  const [filter, setFilter] = useState<FilterType>('ALL')
+  const [processingId, setProcessingId] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetchAllLoans()
+  }, [fetchAllLoans])
+
+  const stats = getStats()
+
+  const filteredLoans =
+    filter === 'ALL' ? loans : loans.filter((l) => l.status === filter)
+
+  const handleStatusChange = async (loanId: number, newStatus: LoanStatus) => {
+    setProcessingId(loanId)
+    await updateLoanStatus(loanId, newStatus)
+    setProcessingId(null)
+  }
 
   const handleFilterChange = (newFilter: FilterType) => {
     setFilter(newFilter)
-    refreshLoans(newFilter)
-    setStats(getStats())
-  }
-
-  const handleStatusChange = (loanId: string, newStatus: LoanStatus) => {
-    setProcessingId(loanId)
-    setTimeout(() => {
-      updateLoanStatus(loanId, newStatus)
-      refreshLoans(filter)
-      setStats(getStats())
-      setProcessingId(null)
-    }, 300)
+    clearError()
   }
 
   return (
@@ -69,7 +73,13 @@ export function AdminDashboard() {
         ))}
       </section>
 
-      {loans.length === 0 ? (
+      {error && <div className="alert-error">{error}</div>}
+
+      {isLoading && loans.length === 0 ? (
+        <div className="empty-state">
+          <p>Cargando prestamos...</p>
+        </div>
+      ) : filteredLoans.length === 0 ? (
         <div className="empty-state">
           <p>
             {TEXTS.adminDashboard.emptyMessage}{' '}
@@ -81,7 +91,7 @@ export function AdminDashboard() {
         </div>
       ) : (
         <section className="admin-loans-list">
-          {loans.map((loan) => {
+          {filteredLoans.map((loan) => {
             const statusInfo = STATUS_LABELS[loan.status]
             const isProcessing = processingId === loan.id
 
@@ -89,7 +99,7 @@ export function AdminDashboard() {
               <article key={loan.id} className="admin-loan-card">
                 <div className="admin-loan-info">
                   <div className="admin-loan-header">
-                    <span className="loan-id">{formatLoanId(loan.id)}</span>
+                    <span className="loan-id">{formatLoanId(String(loan.id))}</span>
                     <span className={`status-badge ${statusInfo.className}`}>
                       {statusInfo.text}
                     </span>
@@ -101,9 +111,6 @@ export function AdminDashboard() {
                     </span>
                     <span>
                       <strong>{TEXTS.adminDashboard.amountLabel}:</strong> {formatCurrency(loan.amount)}
-                    </span>
-                    <span>
-                      <strong>{TEXTS.adminDashboard.termLabel}:</strong> {loan.term} {TEXTS.common.monthsUnit}
                     </span>
                     <span>
                       <strong>{TEXTS.adminDashboard.dateLabel}:</strong> {formatDateTime(loan.createdAt)}

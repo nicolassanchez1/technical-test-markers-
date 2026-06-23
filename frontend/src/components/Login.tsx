@@ -5,18 +5,21 @@ import { APP_NAME, MOCK_USERS, TEXTS } from '../constants'
 import { validateLoginForm, hasErrors } from '../utils/validation'
 
 type Props = {
-  onLogin: (email: string, password: string) => boolean
+  onLogin: (email: string, password: string) => Promise<boolean>
+  isLoading: boolean
+  error: string | null
+  onClearError: () => void
 }
 
 type LoginErrors = Partial<Record<keyof LoginForm | 'credentials', string>>
 
 const INITIAL_FORM: LoginForm = { email: '', password: '' }
 
-export function Login({ onLogin }: Props) {
+export function Login({ onLogin, isLoading, error, onClearError }: Props) {
   const [form, setForm] = useState<LoginForm>(INITIAL_FORM)
   const [errors, setErrors] = useState<LoginErrors>({})
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     const validationErrors = validateLoginForm(form)
 
@@ -25,7 +28,7 @@ export function Login({ onLogin }: Props) {
       return
     }
 
-    const success = onLogin(form.email, form.password)
+    const success = await onLogin(form.email, form.password)
     if (!success) {
       setErrors({ credentials: TEXTS.validation.credentialsInvalid })
     }
@@ -33,6 +36,7 @@ export function Login({ onLogin }: Props) {
 
   const clearFieldError = (field: keyof LoginForm) => {
     setErrors((prev) => ({ ...prev, [field]: undefined, credentials: undefined }))
+    onClearError()
   }
 
   const demoUser = MOCK_USERS[0]
@@ -72,6 +76,7 @@ export function Login({ onLogin }: Props) {
               value={form.email}
               autoComplete="email"
               placeholder={demoUser.email}
+              disabled={isLoading}
               aria-invalid={Boolean(errors.email)}
               onChange={(e) => {
                 setForm((f) => ({ ...f, email: e.target.value }))
@@ -89,6 +94,7 @@ export function Login({ onLogin }: Props) {
               value={form.password}
               autoComplete="current-password"
               placeholder={demoUser.password}
+              disabled={isLoading}
               aria-invalid={Boolean(errors.password)}
               onChange={(e) => {
                 setForm((f) => ({ ...f, password: e.target.value }))
@@ -98,12 +104,12 @@ export function Login({ onLogin }: Props) {
             {errors.password && <span className="field-error">{errors.password}</span>}
           </div>
 
-          {errors.credentials && (
-            <div className="alert-error">{errors.credentials}</div>
+          {(errors.credentials || error) && (
+            <div className="alert-error">{errors.credentials ?? error}</div>
           )}
 
-          <button className="btn-primary" type="submit">
-            {TEXTS.login.submitBtn}
+          <button className="btn-primary" type="submit" disabled={isLoading}>
+            {isLoading ? 'Ingresando...' : TEXTS.login.submitBtn}
           </button>
         </form>
       </section>

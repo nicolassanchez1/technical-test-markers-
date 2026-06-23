@@ -6,20 +6,23 @@ import { useAuth } from './hooks/useAuth'
 import './App.css'
 
 function App() {
-  const { session, login, logout } = useAuth()
+  const { session, login, logout, isLoading, error, clearError } = useAuth()
 
   if (!session) {
-    return <Login onLogin={login} />
+    return (
+      <Login
+        onLogin={login}
+        isLoading={isLoading}
+        error={error}
+        onClearError={clearError}
+      />
+    )
   }
 
   return (
     <>
       <Navbar user={session} onLogout={logout} />
-      {session.role === 'ADMIN' ? (
-        <AdminDashboard />
-      ) : (
-        <UserDashboard user={session} />
-      )}
+      {session.role === 'ADMIN' ? <AdminDashboard /> : <UserDashboard user={session} />}
     </>
   )
 }
