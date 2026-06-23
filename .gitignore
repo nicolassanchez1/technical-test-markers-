@@ -1,0 +1,38 @@
+# =========================
+# Operating System
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs and Editors
+# =========================
+.idea/
+.vscode/
+
+# =========================
+# Backend (Java / Maven / Spring Boot)
+# =========================
+backend/target/
+*.jar
+*.war
+*.ear
+*.class
+*.log
+
+# =========================
+# Frontend (Node / React / Vite)
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Environment Variables & Secrets
+# =========================
+.env
+.env.example
