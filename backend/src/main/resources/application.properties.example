@@ -7,15 +7,15 @@ server.port=${PORT:8080}
 application.api.base-path=/api/v1
 
 # JWT Configuration
-application.security.jwt.secret-key=TU_JWT_SECRET_KEY_AQUI
+application.security.jwt.secret-key=JWT_SECRET_KEY
 application.security.jwt.expiration=86400000
 
 # ===============================
 # PostgreSQL Database Configuration
 # ===============================
-spring.datasource.url=jdbc:postgresql://TU_HOST_AQUI/TU_DB?sslmode=require
-spring.datasource.username=TU_USUARIO
-spring.datasource.password=TU_PASSWORD
+spring.datasource.url=jdbc:postgresql://HOST/TU_DB?sslmode=require
+spring.datasource.username=
+spring.datasource.password=
 spring.datasource.driver-class-name=org.postgresql.Driver
 
 # JPA / Hibernate Configuration
