@@ -31,12 +31,6 @@ export function validateLoanForm(form: LoanRequest): LoanErrors {
     errors.amount = TEXTS.validation.amountMax
   }
 
-  if (!form.term || form.term < LOAN_LIMITS.MIN_TERM) {
-    errors.term = TEXTS.validation.termMin
-  } else if (form.term > LOAN_LIMITS.MAX_TERM) {
-    errors.term = TEXTS.validation.termMax
-  }
-
   return errors
 }
 

@@ -1,30 +1,23 @@
 export const APP_NAME = 'Makers Bank'
 
 export const AUTH_STORAGE_KEY = 'makers-bank-auth'
-export const LOANS_STORAGE_KEY = 'makers-bank-loans'
 
 export const MOCK_USERS = [
   {
     email: 'usuario@test.com',
     password: '123',
-    name: 'Usuario Demo',
     role: 'USER' as const,
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-user-token',
   },
   {
     email: 'admin@test.com',
     password: '123',
-    name: 'Admin Demo',
     role: 'ADMIN' as const,
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock-admin-token',
   },
 ]
 
 export const LOAN_LIMITS = {
   MIN_AMOUNT: 1,
   MAX_AMOUNT: 1_000_000,
-  MIN_TERM: 1,
-  MAX_TERM: 60,
 } as const
 
 export const STATUS_LABELS: Record<string, { text: string; className: string }> = {
@@ -33,7 +26,7 @@ export const STATUS_LABELS: Record<string, { text: string; className: string }> 
   REJECTED: { text: 'Rechazado', className: 'status-rejected' },
 }
 
-export const FILTER_OPTIONS = ['PENDING', 'ALL', 'APPROVED', 'REJECTED'] as const
+export const FILTER_OPTIONS = ['ALL', 'PENDING', 'APPROVED', 'REJECTED'] as const
 
 export const FILTER_LABELS: Record<string, string> = {
   ALL: 'Todos',
@@ -70,7 +63,6 @@ export const TEXTS = {
     cancelBtn: 'Cancelar',
     formTitle: 'Solicitar prestamo',
     amountLabel: 'Monto (MXN)',
-    termLabel: 'Plazo (meses)',
     submitBtn: 'Enviar solicitud',
     successMessage: 'Solicitud de prestamo enviada correctamente.',
     emptyTitle: 'No tienes prestamos registrados.',
@@ -92,7 +84,6 @@ export const TEXTS = {
     rejectedLabel: 'Rechazados',
     applicantLabel: 'Solicitante',
     amountLabel: 'Monto',
-    termLabel: 'Plazo',
     dateLabel: 'Fecha',
   },
   validation: {
@@ -102,14 +93,9 @@ export const TEXTS = {
     credentialsInvalid: 'Correo o contrasena incorrectos.',
     amountRequired: 'El monto debe ser mayor a 0.',
     amountMax: 'El monto maximo es $1,000,000.',
-    termMin: 'El plazo minimo es 1 mes.',
-    termMax: 'El plazo maximo es 60 meses.',
   },
   common: {
     amountLabel: 'Monto',
-    termLabel: 'Plazo',
-    monthsUnit: 'meses',
     requestedPrefix: 'Solicitado:',
-    updatedPrefix: 'Actualizado:',
   },
 } as const
