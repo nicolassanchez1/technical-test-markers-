@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { Loan, LoanRequest, LoanStatus, LoanStatusUpdate, ApiError } from '../types'
 import { api } from '../services/api'
 
@@ -6,34 +6,59 @@ export function useLoans() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const fetchUserLoans = useCallback(async () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+
     setIsLoading(true)
     setError(null)
 
     try {
       const data = await api.get<Loan[]>('/loans')
-      setLoans(data)
+      if (!abortControllerRef.current.signal.aborted) {
+        setLoans(data)
+      }
     } catch (err) {
-      const apiError = err as ApiError
-      setError(apiError.message ?? 'Error al cargar prestamos.')
+      if (!abortControllerRef.current.signal.aborted) {
+        const apiError = err as ApiError
+        setError(apiError.message ?? 'Error al cargar prestamos.')
+      }
     } finally {
-      setIsLoading(false)
+      if (!abortControllerRef.current.signal.aborted) {
+        setIsLoading(false)
+      }
     }
   }, [])
 
   const fetchAllLoans = useCallback(async () => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = new AbortController()
+
     setIsLoading(true)
     setError(null)
 
     try {
       const data = await api.get<Loan[]>('/loans/all')
-      setLoans(data)
+      if (!abortControllerRef.current.signal.aborted) {
+        setLoans(data)
+      }
     } catch (err) {
-      const apiError = err as ApiError
-      setError(apiError.message ?? 'Error al cargar prestamos.')
+      if (!abortControllerRef.current.signal.aborted) {
+        const apiError = err as ApiError
+        setError(apiError.message ?? 'Error al cargar prestamos.')
+      }
     } finally {
-      setIsLoading(false)
+      if (!abortControllerRef.current.signal.aborted) {
+        setIsLoading(false)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
     }
   }, [])
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { AuthUser, LoginResponse, ApiError } from '../types'
 import { AUTH_STORAGE_KEY } from '../constants'
 import { api } from '../services/api'
@@ -24,8 +24,12 @@ export function useAuth() {
   const [session, setSession] = useState<AuthUser | null>(getStoredSession)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isLoggingInRef = useRef(false)
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    if (isLoggingInRef.current) return false
+
+    isLoggingInRef.current = true
     setIsLoading(true)
     setError(null)
 
@@ -52,6 +56,7 @@ export function useAuth() {
       return false
     } finally {
       setIsLoading(false)
+      isLoggingInRef.current = false
     }
   }
 
