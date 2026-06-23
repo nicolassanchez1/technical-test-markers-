@@ -8,4 +8,5 @@ public interface LoanRepositoryPort {
     Loan save(Loan loan);
     Optional<Loan> findById(Long id);
     List<Loan> findByUserEmail(String userEmail);
+    List<Loan> findAll();
 }

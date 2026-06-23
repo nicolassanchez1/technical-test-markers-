@@ -19,6 +19,11 @@ public class LoanService implements ManageLoanUseCase {
     private final LoanRepositoryPort loanRepositoryPort;
 
     @Override
+    public List<Loan> getAllLoans() {
+        return loanRepositoryPort.findAll();
+    }
+
+    @Override
     @Transactional
     @CacheEvict(value = "userLoans", key = "#userEmail")
     public Loan requestLoan(String userEmail, BigDecimal amount) {

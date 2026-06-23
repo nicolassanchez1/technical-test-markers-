@@ -41,6 +41,19 @@ public class LoanController {
         return ResponseEntity.ok(loans);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<LoanResponseDto>> getAllLoans(Authentication authentication) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ADMIN"));
+
+        if (!isAdmin)  return ResponseEntity.status(403).build();
+
+        List<LoanResponseDto> loans = manageLoanUseCase.getAllLoans().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(loans);
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<LoanResponseDto> reviewLoan(
             @PathVariable Long id,

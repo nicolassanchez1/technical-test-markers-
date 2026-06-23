@@ -18,6 +18,13 @@ public class LoanPersistenceAdapter implements LoanRepositoryPort {
     private final LoanRepository repository;
 
     @Override
+    public List<Loan> findAll() {
+        return repository.findAll().stream()
+                .map(this::mapToDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Loan save(Loan loan) {
         LoanEntity entity = LoanEntity.builder()
                 .id(loan.getId())

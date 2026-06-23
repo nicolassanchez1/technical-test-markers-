@@ -8,4 +8,5 @@ public interface ManageLoanUseCase {
     Loan requestLoan(String userEmail, BigDecimal amount);
     Loan reviewLoan(Long loanId, Loan.LoanStatus status);
     List<Loan> getUserLoans(String userEmail);
+    List<Loan> getAllLoans();
 }
